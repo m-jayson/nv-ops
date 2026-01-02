@@ -6,6 +6,15 @@ pom.xml.versionsBackup
 release.properties
 .flattened-pom.xml
 
+# ========================
+# Terraform (inside /terraform folder)
+# ========================
+/terraform/.terraform/
+/terraform/terraform.tfstate
+/terraform/terraform.tfstate.backup
+/terraform/.terraform.lock.hcl
+/terraform/*.tfplan
+
 # Eclipse
 .project
 .classpath
