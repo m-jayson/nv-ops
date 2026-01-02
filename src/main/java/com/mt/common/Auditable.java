@@ -15,6 +15,7 @@ import java.time.Instant;
 public abstract class Auditable extends PanacheEntityBase {
 
   protected Instant createdOn;
+
   protected Instant lastUpdatedOn;
 
   protected String createdBy;

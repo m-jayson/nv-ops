@@ -15,9 +15,9 @@ import lombok.*;
 @Entity
 @Builder
 @Table(name = "sweeper_live")
+@EntityListeners(AuditListener.class)
 @NoArgsConstructor
 @AllArgsConstructor
-@EntityListeners(AuditListener.class)
 public class Sweep extends Auditable {
 
   @Id
