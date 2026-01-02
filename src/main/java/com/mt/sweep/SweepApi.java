@@ -33,9 +33,9 @@ public class SweepApi {
   @Path("/{trackingId}")
   public Uni<Response> findOrderAndSweep (@PathParam("trackingId") String trackingId) {
 
-    log.infof("[Sweep] trackingId=%s | sub=%s", trackingId, jsonWebToken.getClaim("sub"));
+    log.infof("[Parcel Sweep] trackingId=%s | sub=%s", trackingId, jsonWebToken.getClaim("sub"));
 
-    return sweepService.sweep(trackingId)
+    return sweepService.parcelSweeperLive(trackingId)
         .onItem().ifNotNull()
         .transform(order -> Response.ok(order).build());
   }

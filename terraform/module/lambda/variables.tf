@@ -22,7 +22,12 @@ variable "cognito_auth_server_url" {
   type        = string
 }
 
-variable "cognito_client_id" {
-  description = "Cognito User Pool client ID"
+variable "cognito_auth_server_jwks" {
+  description = "Cognito OIDC issuer / auth server URL"
+  type        = string
+}
+
+variable "cognito_issuer" {
+  description = "Cognito Issuer"
   type        = string
 }

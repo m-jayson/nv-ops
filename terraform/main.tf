@@ -14,11 +14,11 @@ provider "aws" {
   region = var.aws_region
 }
 
-module "postgres" {
-  source      = "./module/postgres"
-  db_password = "MySuperSecret123!"
-  db_username = "pgadmin" # must not be reserved
-}
+# module "postgres" {
+#   source      = "./module/postgres"
+#   db_password = "MySuperSecret123!"
+#   db_username = "pgadmin" # must not be reserved
+# }
 
 module "cognito" {
   source = "./module/cognito"

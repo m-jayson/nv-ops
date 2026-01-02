@@ -3,7 +3,6 @@ package com.mt.sweep;
 
 import com.mt.common.OpsException;
 import com.mt.order.OrderService;
-import com.mt.sweep.SweepService.SweepOrder.Order;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -20,8 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.mt.sweep.SweepClientApi.SweepRequest;
-
 
 @JBossLog
 @ApplicationScoped
@@ -37,19 +34,14 @@ public class SweepService {
 
   OrderService orderService;
 
+  SweepMapper sweepMapper;
 
-  public Uni<SweepOrder> sweep (String trackingId) {
+  SweepRepository sweepRepository;
 
-    var hubUser = sweepConfig.hubUser().filter(s -> !s.isBlank()).orElse(null);
 
-    var request = new SweepRequest(
-        sweepConfig.hubId(),
-        trackingId,
-        sweepConfig.taskId(),
-        sweepConfig.nodeId(),
-        sweepConfig.toReturnDpId(),
-        hubUser
-    );
+  public Uni<SweepOrder> parcelSweeperLive (String trackingId) {
+
+    var request = this.sweepMapper.toSweepRequest(sweepConfig, trackingId);
 
     return sweepClientApi.sweep(request)
         .onItem().transformToUni(sweepResponse -> {
@@ -79,24 +71,16 @@ public class SweepService {
                   return Uni.createFrom().failure(new OpsException("Other Hub", "sweep", 404));
                 }
                 return orderService.findByTrackingId(trackingId)
-                    .onItem().transformToUni(order -> {
-                      return Uni.createFrom().item(SweepOrder.builder()
-                                                       .status(sweepResponse.granularStatus())
-                                                       .responsibleHubName(sweepData.responsibleHubName())
-                                                       .zoneName(sweepData.zoneName())
-                                                       .rackSector(sweepData.rackSector())
-                                                       .nextNode(sweepData.nextNode())
-                                                       .tags(sweepData.tags())
-                                                       .isRts(sweepData.rtsed())
-                                                       .order(Order.builder()
-                                                                  .shipperId(order.shipper_id())
-                                                                  .shipperName(order.to_name())
-                                                                  .trackingId(order.tracking_id())
-                                                                  .address1(order.to_address1())
-                                                                  .address2(order.to_address2())
-                                                                  .city(order.to_city())
-                                                                  .build())
-                                                       .build());
+                    .onItem()
+                    .transformToUni(order -> {
+                      return Uni.createFrom().item(this.sweepMapper.toSweepOrder(sweepResponse, sweepData, order))
+                          .onItem().transformToUni(sweepOrder -> {
+                            return this.sweepRepository.saveOrUpdate(
+                                    trackingId, "PARCEL_SWEEP",
+                                    sweepResponse.granularStatus()
+                                )
+                                .onItem().transformToUni(o -> Uni.createFrom().item(sweepOrder));
+                          });
                     });
               });
         });
