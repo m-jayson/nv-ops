@@ -7,6 +7,13 @@ terraform {
   }
 
   required_version = ">= 1.2"
+
+  backend "s3" {
+    bucket         = "nv-app-states"
+    key            = "nv-app/dev/terraform.tfstate"
+    region         = "ap-southeast-1"
+    encrypt        = true
+  }
 }
 
 
@@ -14,40 +21,47 @@ provider "aws" {
   region = var.aws_region
 }
 
-# module "postgres" {
-#   source      = "./module/postgres"
-#   db_password = "MySuperSecret123!"
-#   db_username = "pgadmin" # must not be reserved
-# }
 
 module "cognito" {
   source = "./module/cognito"
 
-  user_pool_name        = "my-app-user-pool"
-  user_pool_client_name = "my-app-client"
-  callback_urls         = ["http://localhost:3000/callback"]
-  logout_urls           = ["http://localhost:3000"]
-  domain_name           = "my-app-auth" # optional, for Hosted UI
+  user_pool_name        = "${var.name}-pool"
+  user_pool_client_name = "${var.name}-client"
+  callback_urls = ["http://localhost:3000/callback"]
+  logout_urls = ["http://localhost:3000"]
+  domain_name           = "${var.name}-auth"
   tags = {
     Environment = "dev"
-    Project     = "my-app"
+    Project     = var.name
   }
 }
 
 # # Lambda module example
-# module "lambda" {
-#   source = "./module/lambda"
-#
-#   name                     = "quarkus-api"
-#   filename                 = "function.zip"
-#   handler                  = "not.used"
-#   runtime                  = "java17"
-#   memory_size              = 1024
-#   timeout                  = 30
-#   expense_table            = "ExpenseTable"
-#
-#   cognito_auth_server_url  = module.cognito.auth_server_url
-#   cognito_client_id        = module.cognito.user_pool_client_id
-# }
+module "lambda" {
+  source = "./module/lambda"
+  name   = var.name
 
+  filename = "${path.root}/../target/function.zip"
+  handler  = "bootstrap"
+  runtime  = "provided.al2023"
+
+  cognito_auth_server_jwks = module.cognito.jwks_url
+  cognito_issuer           = module.cognito.issuer
+
+  db_host = "nv-ops-markjaysongonzaga1990-7047.l.aivencloud.com"
+  db_name = "defaultdb"
+  db_port = "21215"
+  db_pwd  = "AVNS_USo4Hk70Kr0gNBw0oSQ"
+  db_user = "avnadmin"
+  allow_origin = "*"
+}
+
+# Deploy API Gateway + attach lambda
+module "identity_apigw" {
+  source = "./module/apigw"
+
+  name                   = var.name
+  lambda_function_name   = module.lambda.lambda_name
+  lambda_integration_uri = module.lambda.invoke_arn
+}
 

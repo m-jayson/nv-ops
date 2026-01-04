@@ -3,6 +3,7 @@ package com.mt.sweep;
 
 import com.mt.common.OpsException;
 import com.mt.order.OrderService;
+import com.mt.sweep.SweepClientApi.SweepResponse.ParcelRoutingData;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -15,6 +16,7 @@ import lombok.experimental.NonFinal;
 import lombok.extern.jbosslog.JBossLog;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,6 +41,12 @@ public class SweepService {
   SweepRepository sweepRepository;
 
 
+  public Uni<List<Sweep>> csvExport (LocalDate start, LocalDate end, boolean rts, boolean otherHub, boolean onHold) {
+
+    return this.sweepRepository.findOrders(start, end, rts, onHold, otherHub, sweepConfig.hubId());
+  }
+
+
   public Uni<SweepOrder> parcelSweeperLive (String trackingId) {
 
     var request = this.sweepMapper.toSweepRequest(sweepConfig, trackingId);
@@ -61,29 +69,72 @@ public class SweepService {
 
           return Uni.createFrom().optional(parcelSweepInfo)
               .onItem().transformToUni(sweepData -> {
-                if (Objects.isNull(sweepData.toAlert())) {
-                  return Uni.createFrom().failure(new OpsException(sweepResponse.granularStatus(), "sweep", 404));
-                }
-                if (sweepData.onHold()) {
-                  return Uni.createFrom().failure(new OpsException("On Hold", "sweep", 404));
-                }
-                if (!Objects.equals(sweepData.responsibleHubId(), sweepConfig.hubId())) {
-                  return Uni.createFrom().failure(new OpsException("Other Hub", "sweep", 404));
-                }
+                var granularStatus = sweepResponse.granularStatus();
+
                 return orderService.findByTrackingId(trackingId)
                     .onItem()
                     .transformToUni(order -> {
                       return Uni.createFrom().item(this.sweepMapper.toSweepOrder(sweepResponse, sweepData, order))
                           .onItem().transformToUni(sweepOrder -> {
+                            if (Objects.isNull(sweepData.toAlert())) {
+                              return persistRecoveryTracking(
+                                  trackingId,
+                                  granularStatus,
+                                  sweepData,
+                                  granularStatus,
+                                  sweepOrder.order
+                              );
+                            }
+                            if (sweepData.onHold()) {
+                              return persistRecoveryTracking(
+                                  trackingId, granularStatus, sweepData, "On Hold",
+                                  sweepOrder.order
+                              );
+                            }
+                            if (!Objects.equals(sweepData.responsibleHubId(), sweepConfig.hubId())) {
+                              return persistRecoveryTracking(
+                                  trackingId, granularStatus, sweepData, "Other Hub",
+                                  sweepOrder.order
+                              );
+                            }
+
                             return this.sweepRepository.saveOrUpdate(
-                                    trackingId, "PARCEL_SWEEP",
-                                    sweepResponse.granularStatus()
+                                    trackingId,
+                                    sweepData.rtsed(),
+                                    false,
+                                    sweepData.responsibleHubId(),
+                                    granularStatus,
+                                    order.to_name(),
+                                    order.shipper_id(),
+                                    String.join(" ", order.to_address1(), order.to_address2(), order.to_city())
                                 )
                                 .onItem().transformToUni(o -> Uni.createFrom().item(sweepOrder));
                           });
                     });
               });
         });
+  }
+
+
+  private Uni<SweepOrder> persistRecoveryTracking (
+      String trackingId,
+      String granularStatus,
+      ParcelRoutingData sweepData,
+      String exceptionErr,
+      SweepOrder.Order order
+  ) {
+
+    return this.sweepRepository.saveOrUpdate(
+            trackingId,
+            sweepData.rtsed(),
+            sweepData.onHold() != null && sweepData.onHold(),
+            sweepData.responsibleHubId(),
+            granularStatus,
+            order.getShipperName(),
+            order.getShipperId(),
+            String.join(" ", order.getAddress1(), order.getAddress2(), order.getCity())
+        )
+        .onItem().transformToUni(o -> Uni.createFrom().failure(new OpsException(exceptionErr, "sweep", 404)));
   }
 
 

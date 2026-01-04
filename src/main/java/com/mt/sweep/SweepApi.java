@@ -2,11 +2,9 @@ package com.mt.sweep;
 
 
 import io.quarkus.security.Authenticated;
+import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.AccessLevel;
@@ -14,6 +12,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.jbosslog.JBossLog;
 import org.eclipse.microprofile.jwt.JsonWebToken;
+
+import java.time.LocalDate;
+import java.util.Map;
 
 
 @JBossLog
@@ -39,4 +40,40 @@ public class SweepApi {
         .onItem().ifNotNull()
         .transform(order -> Response.ok(order).build());
   }
+
+
+  @POST
+  @Path("/export")
+  @Authenticated
+  @Produces("text/csv")
+  public Uni<Response> exportCsv (
+      @QueryParam("rts") boolean rts,
+      @QueryParam("on_hold") boolean onHold,
+      @QueryParam("other_hub") boolean otherHub,
+      Map<String, LocalDate> parameter
+  ) {
+
+    LocalDate startDate = parameter.get("startDate");
+    LocalDate endDate = parameter.get("endDate");
+
+    String fileName = String.format(
+        "sweeps-%s_%s.csv",
+        startDate != null ? startDate.toString() : "start",
+        endDate != null ? endDate.toString() : "end"
+    );
+
+    return sweepService.csvExport(startDate, endDate, rts, otherHub, onHold)
+        .onItem().transformToMulti(Multi.createFrom()::iterable)
+        .map(Sweep::getTrackingNumber)
+        .collect().asList()
+        .onItem().transform(trackingNumbers -> {
+          var csvContent = String.join("\n", trackingNumbers);
+
+          return Response.ok(csvContent)
+              .header("Content-Disposition", "attachment; filename=\"" + fileName + "\"")
+              .build();
+        });
+  }
+
+
 }

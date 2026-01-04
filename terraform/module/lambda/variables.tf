@@ -12,16 +12,6 @@ variable "timeout" {
   default = 15
 }
 
-variable "expense_table" {
-  type = string
-}
-
-
-variable "cognito_auth_server_url" {
-  description = "Cognito OIDC issuer / auth server URL"
-  type        = string
-}
-
 variable "cognito_auth_server_jwks" {
   description = "Cognito OIDC issuer / auth server URL"
   type        = string
@@ -31,3 +21,9 @@ variable "cognito_issuer" {
   description = "Cognito Issuer"
   type        = string
 }
+variable "db_host" { type = string }
+variable "db_port" { type = string }
+variable "db_name" { type = string }
+variable "db_user" { type = string }
+variable "db_pwd" { type = string }
+variable "allow_origin" { type = string }

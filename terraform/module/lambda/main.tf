@@ -39,9 +39,14 @@ resource "aws_lambda_function" "fn" {
   environment {
     variables = {
       QUARKUS_LAMBDA_HANDLER = "io.quarkus.amazon.lambda.runtime.QuarkusStreamHandler"
-      EXPENSE_TABLE          = var.expense_table
       COGNITO_JWKS_URL       = var.cognito_auth_server_jwks
       COGNITO_ISSUER         = var.cognito_issuer
+      DB_HOST                = var.db_host
+      DB_PORT                = var.db_port
+      DB_NAME                = var.db_name
+      DB_USER                = var.db_user
+      DB_PASSWORD            = var.db_pwd
+      APIGW_ORIGIN           = var.allow_origin
     }
   }
 }

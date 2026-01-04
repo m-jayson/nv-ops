@@ -13,3 +13,7 @@ output "auth_server_url" {
 output "issuer" {
   value = module.cognito.issuer
 }
+
+output "api_endpoint" {
+  value = module.identity_apigw.api_endpoint
+}

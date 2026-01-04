@@ -39,9 +39,14 @@ public class Opv2TokenApi {
   @GET
   @Authenticated
   public Uni<Response> fetchToken () {
-    //TODO:: test call to ninjavan api
+
     return opv2TokenService.fetchToken()
-        .onItem().transform(token -> Response.ok(Map.of("X-NV-Token", token)).build());
+        .onItem().transform(token -> Response.ok(Map.of("X-NV-Token", token)).build())
+        .onFailure().recoverWithItem(e ->
+                                         Response.status(Response.Status.EXPECTATION_FAILED)
+                                             .entity(Map.of("error", e.getMessage()))
+                                             .build()
+        );
   }
 
 

@@ -54,7 +54,7 @@ public interface SweepClientApi {
         Boolean toAlert,
         Long routeId,
         int priorityLevel,
-        boolean onHold,
+        Boolean onHold,
         long responsibleHubId,
         String zoneName,
         long zoneGlobalId,

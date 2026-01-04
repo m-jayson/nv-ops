@@ -15,3 +15,6 @@ output "auth_server_url" {
 output "issuer" {
   value = "https://cognito-idp.${data.aws_region.current.name}.amazonaws.com/${aws_cognito_user_pool.this.id}"
 }
+output "jwks_url" {
+  value = "https://cognito-idp.${data.aws_region.current.name}.amazonaws.com/${aws_cognito_user_pool.this.id}/.well-known/jwks.json"
+}

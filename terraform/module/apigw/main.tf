@@ -4,6 +4,13 @@
 resource "aws_apigatewayv2_api" "api_gateway" {
   name          = "${var.name}-api-gw"
   protocol_type = "HTTP"
+
+  cors_configuration {
+    allow_origins = ["*"] # your S3 URL
+    allow_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]
+    allow_headers = ["Content-Type", "Authorization", "X-NV-Token"]
+    max_age       = 3600
+  }
 }
 
 # ========================

@@ -23,7 +23,17 @@ public class Sweep extends Auditable {
   @Id
   String trackingNumber;
 
-  String type;
+  Long shipperId;
+
+  String shipperName;
+
+  String fullAddress;
+
+  boolean isRts;
+
+  boolean isOnHold;
 
   String status;
+
+  Long responsibleHubId;
 }
