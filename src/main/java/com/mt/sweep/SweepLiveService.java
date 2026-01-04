@@ -3,7 +3,6 @@ package com.mt.sweep;
 
 import com.mt.common.OpsException;
 import com.mt.order.OrderService;
-import com.mt.sweep.SweepClientApi.SweepResponse.ParcelRoutingData;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -16,7 +15,6 @@ import lombok.experimental.NonFinal;
 import lombok.extern.jbosslog.JBossLog;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -26,7 +24,7 @@ import java.util.Objects;
 @ApplicationScoped
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
-public class SweepService {
+public class SweepLiveService {
 
   @NonFinal
   @RestClient
@@ -39,12 +37,6 @@ public class SweepService {
   SweepMapper sweepMapper;
 
   SweepRepository sweepRepository;
-
-
-  public Uni<List<Sweep>> csvExport (LocalDate start, LocalDate end, boolean rts, boolean otherHub, boolean onHold) {
-
-    return this.sweepRepository.findOrders(start, end, rts, onHold, otherHub, sweepConfig.hubId());
-  }
 
 
   public Uni<SweepOrder> parcelSweeperLive (String trackingId) {
@@ -77,6 +69,7 @@ public class SweepService {
                       return Uni.createFrom().item(this.sweepMapper.toSweepOrder(sweepResponse, sweepData, order))
                           .onItem().transformToUni(sweepOrder -> {
                             if (Objects.isNull(sweepData.toAlert())) {
+                              log.infof("[Parcel Sweep] [%s Status] %s", granularStatus, trackingId);
                               return persistRecoveryTracking(
                                   trackingId,
                                   granularStatus,
@@ -85,13 +78,16 @@ public class SweepService {
                                   sweepOrder.order
                               );
                             }
-                            if (sweepData.onHold()) {
+                            var isOnHold = sweepData.onHold();
+                            if (null == isOnHold || isOnHold) {
+                              log.infof("[Parcel Sweep] [On Hold Status] %s", trackingId);
                               return persistRecoveryTracking(
                                   trackingId, granularStatus, sweepData, "On Hold",
                                   sweepOrder.order
                               );
                             }
                             if (!Objects.equals(sweepData.responsibleHubId(), sweepConfig.hubId())) {
+                              log.infof("[Parcel Sweep] [Other Hub Status] %s", trackingId);
                               return persistRecoveryTracking(
                                   trackingId, granularStatus, sweepData, "Other Hub",
                                   sweepOrder.order
@@ -119,7 +115,7 @@ public class SweepService {
   private Uni<SweepOrder> persistRecoveryTracking (
       String trackingId,
       String granularStatus,
-      ParcelRoutingData sweepData,
+      SweepClientApi.SweepResponse.ParcelRoutingData sweepData,
       String exceptionErr,
       SweepOrder.Order order
   ) {

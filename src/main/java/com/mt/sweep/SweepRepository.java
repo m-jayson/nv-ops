@@ -1,15 +1,20 @@
 package com.mt.sweep;
 
 
+import com.mt.order.OrderClientApi.OrderSearchResponse.SearchData.Order;
+import com.mt.sweep.SweepClientApi.SweepResponse.ParcelRoutingData;
+import io.quarkus.hibernate.reactive.panache.Panache;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
+import lombok.extern.jbosslog.JBossLog;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
 
+@JBossLog
 @ApplicationScoped
 public class SweepRepository {
 
@@ -33,7 +38,32 @@ public class SweepRepository {
       params = new Object[]{rts, onHold, start, end};
     }
 
+    log.infof("[Parcel Sweep Query] %s", query.toString());
+
     return Sweep.<Sweep>find(query.toString(), params).list();
+  }
+
+
+  @WithTransaction
+  public Uni<Sweep> updateReSweep (Sweep order, ParcelRoutingData parcelRoutingData, Order sweepOrder, String status) {
+
+    log.infof("[Parcel ReSweep] %s", order.getTrackingNumber());
+
+    var address = String.join(" ", sweepOrder.to_address1(), sweepOrder.to_address2());
+    var shipperName = sweepOrder.to_name();
+    var shipperId = sweepOrder.shipper_id();
+
+    order.setRts(parcelRoutingData.rtsed());
+    order.setResponsibleHubId(parcelRoutingData.responsibleHubId());
+    order.setOnHold(parcelRoutingData.onHold());
+    order.setStatus(status);
+    order.setFullAddress(address);
+    order.setShipperId(shipperId);
+    order.setShipperName(shipperName);
+
+    return Panache.getSession()
+        .flatMap(session -> session.merge(order))
+        .replaceWith(order);
   }
 
 
@@ -60,6 +90,7 @@ public class SweepRepository {
                 .isRts(isRts)
                 .isOnHold(isOnHold)
                 .status(status)
+                .responsibleHubId(responsibleHubId)
                 .build();
             s.setLastUpdatedOn(Instant.now());
             return s.persist();
@@ -68,6 +99,7 @@ public class SweepRepository {
             sweep.setShipperId(shipperId);
             sweep.setShipperName(shipperName);
             sweep.setFullAddress(completeAddress);
+            sweep.setResponsibleHubId(responsibleHubId);
             sweep.setLastUpdatedOn(Instant.now());
             return Uni.createFrom().item(sweep);
           }

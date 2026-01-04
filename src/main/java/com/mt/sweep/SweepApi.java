@@ -11,7 +11,6 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.jbosslog.JBossLog;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 
 import java.time.LocalDate;
 import java.util.Map;
@@ -24,9 +23,11 @@ import java.util.Map;
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class SweepApi {
 
-  SweepService sweepService;
+  SweepRedoService sweepRedoService;
 
-  JsonWebToken jsonWebToken;
+  SweepExportService sweepExportService;
+
+  SweepLiveService sweepLiveService;
 
 
   @GET
@@ -34,9 +35,9 @@ public class SweepApi {
   @Path("/{trackingId}")
   public Uni<Response> findOrderAndSweep (@PathParam("trackingId") String trackingId) {
 
-    log.infof("[Parcel Sweep] trackingId=%s | sub=%s", trackingId, jsonWebToken.getClaim("sub"));
+    log.infof("[Parcel Sweep] trackingId=%s", trackingId);
 
-    return sweepService.parcelSweeperLive(trackingId)
+    return sweepLiveService.parcelSweeperLive(trackingId)
         .onItem().ifNotNull()
         .transform(order -> Response.ok(order).build());
   }
@@ -53,16 +54,22 @@ public class SweepApi {
       Map<String, LocalDate> parameter
   ) {
 
-    LocalDate startDate = parameter.get("startDate");
-    LocalDate endDate = parameter.get("endDate");
+    var startDate = parameter.get("startDate");
+    var endDate = parameter.get("endDate");
 
-    String fileName = String.format(
+    log.infof(
+        "[Parcel Sweep Export] startDate=%s | endDate=%s",
+        startDate,
+        endDate
+    );
+
+    var fileName = String.format(
         "sweeps-%s_%s.csv",
         startDate != null ? startDate.toString() : "start",
         endDate != null ? endDate.toString() : "end"
     );
 
-    return sweepService.csvExport(startDate, endDate, rts, otherHub, onHold)
+    return sweepExportService.csvExport(startDate, endDate, rts, otherHub, onHold)
         .onItem().transformToMulti(Multi.createFrom()::iterable)
         .map(Sweep::getTrackingNumber)
         .collect().asList()
@@ -75,5 +82,22 @@ public class SweepApi {
         });
   }
 
+
+  @POST
+  @Path("/resweep")
+  @Authenticated
+  public Uni<Response> resweep (
+      @QueryParam("rts") boolean rts,
+      @QueryParam("on_hold") boolean onHold,
+      @QueryParam("other_hub") boolean otherHub,
+      Map<String, LocalDate> parameter
+  ) {
+
+    var startDate = parameter.get("startDate");
+    var endDate = parameter.get("endDate");
+    log.infof("[Parcel ReSweep] startDate=%s | endDate=%s | sub=%s", startDate, endDate);
+    return sweepRedoService.reSweep(startDate, endDate, rts, onHold, otherHub)
+        .onItem().transform(order -> Response.ok(order).build());
+  }
 
 }

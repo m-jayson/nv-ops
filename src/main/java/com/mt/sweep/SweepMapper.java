@@ -5,7 +5,7 @@ import com.mt.order.OrderClientApi.OrderSearchResponse.SearchData.Order;
 import com.mt.sweep.SweepClientApi.SweepRequest;
 import com.mt.sweep.SweepClientApi.SweepResponse;
 import com.mt.sweep.SweepClientApi.SweepResponse.ParcelRoutingData;
-import com.mt.sweep.SweepService.SweepOrder;
+import com.mt.sweep.SweepLiveService.SweepOrder;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
@@ -26,10 +26,11 @@ public interface SweepMapper {
       target = "hub_user",
       expression = "java(sweepConfig.hubUser().orElse(null))"
   )
-  SweepRequest toSweepRequest(
+  SweepRequest toSweepRequest (
       SweepConfig sweepConfig,
       String trackingId
   );
+
 
   @Mapping(target = "status", source = "sweepResponse.granularStatus")
   @Mapping(target = "responsibleHubName", source = "sweepData.responsibleHubName")
