@@ -48,7 +48,7 @@ public interface RouteClient {
 
   @POST
   @Path("/pa-job-search/search")
-  Uni<PostPaJob> searchPaJob (PostPaJobRequest request);
+  Uni<PostPaJob> searchPaJob (PickupSearchRequest request);
 
   @GET
   @Path("/control/proofs")

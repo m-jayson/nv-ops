@@ -29,24 +29,9 @@ public class Shipper extends Auditable {
 
   Long shipperId;
 
-  Long masterShipperId;
+  String shipperAddress;
 
-  String address1;
+  Boolean active;
 
-  String address2;
-
-  String postcode;
-
-  String neighbourhood;
-
-  String locality;
-
-  String region;
-
-  String country;
-
-  Double latitude;
-
-  Double longitude;
-
+  String city;
 }

@@ -20,6 +20,50 @@ import java.util.Map;
 @RegisterForReflection
 public class RouteClientDto {
 
+  @Data
+  @Builder
+  public static class PickupSearchRequest {
+
+    private int limit;
+
+    private Query query;
+
+    @Data
+    @Builder
+    public static class Query {
+
+      @JsonProperty("pickup_latest_datetime")
+      private DateTimeRange pickupLatestDatetime;
+
+      @JsonProperty("pickup_service_type")
+      private InFilter<String> pickupServiceType;
+
+      @JsonProperty("hub_id")
+      private InFilter<Long> hubId;
+
+      @JsonProperty("pickup_appointment_job_type")
+      private InFilter<String> pickupAppointmentJobType;
+    }
+
+    @Data
+    @Builder
+    public static class DateTimeRange {
+
+      @JsonProperty("lower_bound")
+      private OffsetDateTime lowerBound;
+
+      @JsonProperty("upper_bound")
+      private OffsetDateTime upperBound;
+    }
+
+    @Data
+    @Builder
+    public static class InFilter<T> {
+
+      private List<T> in;
+    }
+  }
+
   @RegisterForReflection
   public class PickUpRequest {
 
@@ -189,10 +233,11 @@ public class RouteClientDto {
   @RegisterForReflection
   public record GetJob(List<Job> data) {
 
-    record Job(long id,
-               long waypoint_id,
-               long job_id,
-               String job_type) {
+    @RegisterForReflection
+    public record Job(long id,
+                      long waypoint_id,
+                      long job_id,
+                      String job_type) {
 
     }
   }
@@ -200,6 +245,7 @@ public class RouteClientDto {
   @RegisterForReflection
   public record GetWaypoints(List<Waypoint> data) {
 
+    @RegisterForReflection
     record Waypoint(Long id,
                     Long route_id,
                     String waypoint_type,
